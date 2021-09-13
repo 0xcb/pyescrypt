@@ -1,0 +1,6 @@
+[submodule "yescrypt"]
+	path = yescrypt
+	url = https://github.com/openwall/yescrypt
+[submodule "src/yescrypt"]
+	path = src/yescrypt
+	url = https://github.com/openwall/yescrypt
