@@ -273,7 +273,7 @@ class Yescrypt:
                         'slt': b64encode(salt).decode(),
                     },
                     separators=(',', ':'),
-                )
+                ).encode()
 
         return digest
 
