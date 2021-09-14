@@ -11,6 +11,7 @@ import json
 import secrets
 from base64 import b64decode, b64encode
 from enum import Enum
+from json import JSONDecodeError
 from pathlib import Path
 from typing import Any, Optional
 
@@ -145,10 +146,15 @@ class Yescrypt:
         mode: Mode = Mode.JSON,
     ):
         """
-        Yescrypt instances should be considered immutable. This allows their
-        parameters and the local memory used for hashing to be allocated once and
-        reused, which is important as the amount of memory used grows (allocation
-        is slow and dominates hashing time when using GiBs of memory).
+        Creates a Yescrypt hasher with settings preconfigured and memory
+        preallocated.
+
+        The hasher should be considered immutable. This allows its parameters and
+        the local memory used for hashing to be allocated once and reused, which is
+        important as the amount of memory used grows (allocation is slow and
+        dominates hashing time when using GiBs of memory).
+
+        Note that instances of Yescrypt aren't thread-safe.
 
         :param n: Block count (capital 'N' in yescrypt proper).
          bytes.
@@ -158,10 +164,10 @@ class Yescrypt:
         :param p: Parallelism. Unlike scrypt, threads in yescrypt don't increase
          memory usage.
         :param mode: The encoding to expect for inputs and to generate for outputs.
-         Mode.JSON encodes all relevant data and is the default. Mode.MFC is similar
-         but uses the Modular Crypt Format, forces hashes to be 32 bytes (length is
-         not encoded), and limits salts to 64 bytes. Mode.RAW applies no special
-         encoding and leaves everything in the user's hands.
+         `Mode.JSON` encodes all relevant data and is the default. `Mode.MCF` is
+         similar but uses the Modular Crypt Format, forces hashes to be 32 bytes
+         (length is implicit, not encoded), and limits salts to 64 bytes. `Mode.RAW`
+         applies no special encoding and leaves everything in the user's hands.
         """
         self._mode = mode
 
@@ -193,13 +199,18 @@ class Yescrypt:
         hash_length: int = 32,
     ) -> bytes:
         """
-        Note that using the Modular Crypt Format string
+        Generates a yescrypt hash for `password` in the mode this Yescrypt instance
+        is configured to use.
 
-        :param password: The password to hash.
-        :param salt: A salt for the hash. Required unless using settings with Mode.MCF.
-        :param hash_length: The desired hash length. Must be 32 when using Mode.MCF.
-        :param settings: An MCF-encoded string. Only used with Mode.MCF.
-        :return: Hash bytes in JSON, MCF, or RAW format.
+        Note that in `Mode.MCF` the Modular Crypt Format string contains a salt,
+         found in `settings`, and `hash_length` is fixed at 32.
+
+        :param password: A password to hash.
+        :param salt: A salt for the hash. Required unless using `settings` with
+         `Mode.MCF`.
+        :param settings: An MCF-encoded paraneter string. Only used with `Mode.MCF`.
+        :param hash_length: The desired hash length. Must be 32 when using `Mode.MCF`.
+        :return: JSON-, MCF-, or raw-encoded hash bytes.
         """
         if self._mode is Mode.MCF:
             if hash_length != 32:
@@ -218,9 +229,9 @@ class Yescrypt:
             if not settings:
                 raise Exception('Hashing Error: yescrypt_encode_params failed.')
             # Buffer for encoded 32-byte password and max 64-byte salt (128 bytes),
-            # with 4 $ delimeters, 5 setting characters, a 'y' for yescrypt, a
-            # null terminator, and one extra byte for good measure.
-            buf_length = 140
+            # with a 'y' for yescrypt, 4 $ delimeters, up to 8 6-byte parameters,
+            # and a null terminator.
+            buf_length = 181
             with ffi.new(f'uint8_t[{buf_length}]') as hash_buffer:
                 if not _LIB.yescrypt_r(
                     ffi.NULL,
@@ -273,26 +284,45 @@ class Yescrypt:
         salt: Optional[bytes] = None
     ) -> None:
         """
-        In Mode.JSON the encoded arguments are checked against this Yescrypt
-        instance and a special exception is raised if they don't match.
+        Generates a yescrypt hash for `password`, securely compares it to an
+        existing `hashed_password`, and raises an exception if they don't match.
+        Mismatches between the Yescrypt instance Mode and the `hashed_password`
+        format raise a ValueError, except in Mode.RAW, where all bets are off.
 
-        In Mode.MCF, the internal yescrypt library decodes the arguments from MCF
-        and the comparison simply fails if they don't match, since a different
-        hash will be produced. In the future this may be enhanced with a more
-        specific exception like Mode.JSON.
+        In Mode.JSON the encoded arguments are checked against this Yescrypt
+        instance and a special exception is raised if they don't match. This
+        prevents `password` from being hashed and should not be used in a way
+        that's vulnerable to timing attacks.
+
+        In Mode.MCF, the internal yescrypt library decodes the arguments from the
+        MCF string and the comparison simply fails if they don't match, since a
+        different hash will be produced. In the future this may be enhanced with
+        a more specific exception like Mode.JSON.
 
         In Mode.RAW, all responsibility is left in the hands of the caller,
         including supplying the salt (the parameters are already present in the
         Yescrypt instance, but may not match those used for hashed_password).
 
-        :param password: The plaintext password to check.
-        :param hashed_password: The password hash to check against.
-        :param salt: The salt used for hashed_password. Only required when using
+        :param password: A password to check.
+        :param hashed_password: A password hash to check against.
+        :param salt: The salt used for `hashed_password`. Only required when using
          Mode.RAW.
-        :raises: WrongPassword, WrongPasswordConfiguration
+        :raises: WrongPassword, WrongPasswordConfiguration, ValueError
         """
         if self._mode == Mode.JSON:
-            data = json.loads(hashed_password)
+            try:
+                data = json.loads(hashed_password)
+            except JSONDecodeError:
+                if hashed_password.startswith(b'$y$'):
+                    raise ValueError(
+                        'Argument Error: MCF string passed to a JSON instance of '
+                        'Yescrypt.'
+                    )
+                else:
+                    raise ValueError(
+                        'Argument Error: Raw (probably) data passed to a JSON '
+                        'instance of Yescrypt.'
+                    )
             # Make sure the parameters of this instance of Yescrypt are compatible
             # with those of the hashed password.
             cfg = data['cfg']
@@ -306,7 +336,21 @@ class Yescrypt:
                 password, salt=salt, hash_length=len(b64decode(data['key']))
             )
         elif self._mode == Mode.MCF:
+            if not hashed_password.startswith(b'$y$'):
+                try:
+                    _ = json.loads(hashed_password)
+                    raise ValueError(
+                        'Argument Error: JSON passed to an MCF instance of Yescrypt.'
+                    )
+                except ValueError:
+                    raise
+                except Exception:
+                    raise ValueError(
+                        'Argument Error: Raw (probably) data passed to an MCF '
+                        'instance of Yescrypt.'
+                    )
             settings = hashed_password[:hashed_password.rfind(b'$')]
+
             # Length is always 32 in MCF mode.
             password_hash = self.digest(password, settings=settings, hash_length=32)
         else:
@@ -326,6 +370,7 @@ class Yescrypt:
 def main() -> None:
     import time
 
+    # All default settings.
     hasher = Yescrypt(n=2**16, r=8, p=1, mode=Mode.JSON)
     for i in range(5):
         password = secrets.token_bytes(32)
