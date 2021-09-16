@@ -13,9 +13,9 @@ from base64 import b64decode, b64encode
 from enum import Enum
 from json import JSONDecodeError
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, cast, Optional
 
-from cffi import FFI
+from cffi import FFI  # noqa
 
 ffi = FFI()
 
@@ -157,7 +157,6 @@ class Yescrypt:
         Note that instances of Yescrypt aren't thread-safe.
 
         :param n: Block count (capital 'N' in yescrypt proper).
-         bytes.
         :param r: Block size, in 128-byte units.
         :param t: An additional time factor. Useful for making hashing more
          expensive when more memory is not available.
@@ -249,7 +248,7 @@ class Yescrypt:
                     ffi.NULL,
                     self._local_region,
                     password, len(password),
-                    salt, len(salt),
+                    salt, len(cast(bytes, salt)),
                     self._params,
                     hash_buffer, hash_length,
                 ):
@@ -270,7 +269,7 @@ class Yescrypt:
                             't': self._params.t,
                         },
                         'key': b64encode(digest).decode(),
-                        'slt': b64encode(salt).decode(),
+                        'slt': b64encode(cast(bytes, salt)).decode(),
                     },
                     separators=(',', ':'),
                 ).encode()
@@ -384,7 +383,7 @@ def main() -> None:
             print('passwords have different configurations')
         except WrongPassword:
             print('passwords don\'t match')
-        print(f'yescrypt took {stop} seconds to generate main hash {h}')
+        print(f'yescrypt took {stop} seconds to generate main hash {h.decode()}')
 
 
 if __name__ == '__main__':
