@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 import subprocess
 import sys
-from distutils.command.build import build  # noqa
-from wheel.bdist_wheel import bdist_wheel as _bdist_wheel
+from distutils.command.build import build  # type: ignore
 
-from setuptools import find_packages, setup
+from setuptools import find_packages, setup  # type: ignore
+from wheel.bdist_wheel import bdist_wheel as _bdist_wheel  # type: ignore
 
 _MAKE_TYPE = None
 
