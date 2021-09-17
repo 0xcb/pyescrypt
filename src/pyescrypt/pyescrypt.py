@@ -15,7 +15,7 @@ from json import JSONDecodeError
 from pathlib import Path
 from typing import Any, cast, Optional
 
-from cffi import FFI  # noqa
+from cffi import FFI  # type: ignore
 
 ffi = FFI()
 
@@ -53,14 +53,17 @@ YESCRYPT_SBOX_768K = 0x380
 YESCRYPT_SHARED_PREALLOCATED = 0x10000
 
 YESCRYPT_RW_DEFAULTS = (
-        YESCRYPT_RW |
-        YESCRYPT_ROUNDS_6 | YESCRYPT_GATHER_4 | YESCRYPT_SIMPLE_2 |
-        YESCRYPT_SBOX_12K
+    YESCRYPT_RW
+    | YESCRYPT_ROUNDS_6
+    | YESCRYPT_GATHER_4
+    | YESCRYPT_SIMPLE_2
+    | YESCRYPT_SBOX_12K
 )
 
 YESCRYPT_DEFAULTS = YESCRYPT_RW_DEFAULTS
 
-ffi.cdef('''
+ffi.cdef(
+    """
     typedef uint32_t yescrypt_flags_t;
 
     typedef struct {
@@ -109,9 +112,10 @@ ffi.cdef('''
         const uint8_t *setting,
         const yescrypt_binary_t *key,
         uint8_t *buf, size_t buflen);
-''')
+"""
+)
 
-_LIB = ffi.dlopen(f'{Path(__file__).parent.resolve()}/yescrypt.bin')
+_LIB = ffi.dlopen(f"{Path(__file__).parent.resolve()}/yescrypt.bin")
 
 
 class Mode(Enum):
@@ -139,7 +143,7 @@ class Yescrypt:
 
     def __init__(
         self,
-        n: int = 2**16,
+        n: int = 2 ** 16,
         r: int = 8,
         t: int = 0,
         p: int = 1,
@@ -174,11 +178,11 @@ class Yescrypt:
         g = 0
         nrom = 0
         self._params = ffi.new(
-            'yescrypt_params_t*', (YESCRYPT_RW_DEFAULTS, n, r, p, t, g, nrom)
+            "yescrypt_params_t*", (YESCRYPT_RW_DEFAULTS, n, r, p, t, g, nrom)
         )
-        self._local_region = ffi.new('yescrypt_local_t*')
+        self._local_region = ffi.new("yescrypt_local_t*")
         if _LIB.yescrypt_init_local(self._local_region):
-            raise Exception('Initialization Error: yescrypt_init_local failed.')
+            raise Exception("Initialization Error: yescrypt_init_local failed.")
         # Force OS to allocate the memory for these parameters. New parameters
         # should get a new Yescrypt instance.
         # NB: We use YESCRYPT_RW exclusively, so unlike in scrypt p doesn't
@@ -214,73 +218,75 @@ class Yescrypt:
         if self._mode is Mode.MCF:
             if hash_length != 32:
                 raise ValueError(
-                    'Argument Error: Yescrypt assumes 256-bit hashes for MCF and '
-                    'does not store length in the crypt string. The hash_length '
-                    'argument must be 32 in MCF mode.'
+                    "Argument Error: Yescrypt assumes 256-bit hashes for MCF and "
+                    "does not store length in the crypt string. The hash_length "
+                    "argument must be 32 in MCF mode."
                 )
             if not settings:
                 if not salt:
                     raise ValueError(
-                        'Argument Error: A salt is required if not using MCF-encoded '
-                        'settings.'
+                        "Argument Error: A salt is required if not using MCF-encoded "
+                        "settings."
                     )
                 settings = _LIB.yescrypt_encode_params(self._params, salt, len(salt))
             if not settings:
-                raise Exception('Hashing Error: yescrypt_encode_params failed.')
+                raise Exception("Hashing Error: yescrypt_encode_params failed.")
             # Buffer for encoded 32-byte password and max 64-byte salt (128 bytes),
             # with a 'y' for yescrypt, 4 $ delimeters, up to 8 6-byte parameters,
             # and a null terminator.
             buf_length = 181
-            with ffi.new(f'uint8_t[{buf_length}]') as hash_buffer:
+            with ffi.new(f"uint8_t[{buf_length}]") as hash_buffer:
                 if not _LIB.yescrypt_r(
                     ffi.NULL,
                     self._local_region,
-                    password, len(password),
+                    password,
+                    len(password),
                     settings,
                     ffi.NULL,
-                    hash_buffer, buf_length,
+                    hash_buffer,
+                    buf_length,
                 ):
-                    raise Exception('Hashing Error: yescrypt_r failed.')
+                    raise Exception("Hashing Error: yescrypt_r failed.")
                 digest = ffi.string(hash_buffer, 10000)
         else:
-            with ffi.new(f'uint8_t[{hash_length}]') as hash_buffer:
+            with ffi.new(f"uint8_t[{hash_length}]") as hash_buffer:
                 if _LIB.yescrypt_kdf(
                     ffi.NULL,
                     self._local_region,
-                    password, len(password),
-                    salt, len(cast(bytes, salt)),
+                    password,
+                    len(password),
+                    salt,
+                    len(cast(bytes, salt)),
                     self._params,
-                    hash_buffer, hash_length,
+                    hash_buffer,
+                    hash_length,
                 ):
-                    raise Exception('Hashing Error: yescrypt_kdf failed.')
+                    raise Exception("Hashing Error: yescrypt_kdf failed.")
                 digest = bytes(hash_buffer)
             if self._mode is Mode.JSON:
                 digest = json.dumps(
                     {
-                        'alg': 'yescrypt',
-                        'ver': '1.1',
-                        'cfg': {
-                            'N': self._params.N,
-                            'NROM': self._params.NROM,
-                            'flags': self._params.flags,
-                            'g': self._params.g,
-                            'p': self._params.p,
-                            'r': self._params.r,
-                            't': self._params.t,
+                        "alg": "yescrypt",
+                        "ver": "1.1",
+                        "cfg": {
+                            "N": self._params.N,
+                            "NROM": self._params.NROM,
+                            "flags": self._params.flags,
+                            "g": self._params.g,
+                            "p": self._params.p,
+                            "r": self._params.r,
+                            "t": self._params.t,
                         },
-                        'key': b64encode(digest).decode(),
-                        'slt': b64encode(cast(bytes, salt)).decode(),
+                        "key": b64encode(digest).decode(),
+                        "slt": b64encode(cast(bytes, salt)).decode(),
                     },
-                    separators=(',', ':'),
+                    separators=(",", ":"),
                 ).encode()
 
         return digest
 
     def compare(
-        self,
-        password: bytes,
-        hashed_password: bytes,
-        salt: Optional[bytes] = None
+        self, password: bytes, hashed_password: bytes, salt: Optional[bytes] = None
     ) -> None:
         """
         Generates a yescrypt hash for `password`, securely compares it to an
@@ -312,57 +318,57 @@ class Yescrypt:
             try:
                 data = json.loads(hashed_password)
             except JSONDecodeError:
-                if hashed_password.startswith(b'$y$'):
+                if hashed_password.startswith(b"$y$"):
                     raise ValueError(
-                        'Argument Error: MCF string passed to a JSON instance of '
-                        'Yescrypt.'
+                        "Argument Error: MCF string passed to a JSON instance of "
+                        "Yescrypt."
                     )
                 else:
                     raise ValueError(
-                        'Argument Error: Raw (probably) data passed to a JSON '
-                        'instance of Yescrypt.'
+                        "Argument Error: Raw (probably) data passed to a JSON "
+                        "instance of Yescrypt."
                     )
             # Make sure the parameters of this instance of Yescrypt are compatible
             # with those of the hashed password.
-            cfg = data['cfg']
+            cfg = data["cfg"]
             for k in cfg.keys():
                 if cfg[k] != getattr(self._params, k):
                     raise WrongPasswordConfiguration(
-                        'Error: Password configurations are incompatible.'
+                        "Error: Password configurations are incompatible."
                     )
-            salt = b64decode(data['slt'])
+            salt = b64decode(data["slt"])
             password_hash = self.digest(
-                password, salt=salt, hash_length=len(b64decode(data['key']))
+                password, salt=salt, hash_length=len(b64decode(data["key"]))
             )
         elif self._mode == Mode.MCF:
-            if not hashed_password.startswith(b'$y$'):
+            if not hashed_password.startswith(b"$y$"):
                 try:
                     _ = json.loads(hashed_password)
                     raise ValueError(
-                        'Argument Error: JSON passed to an MCF instance of Yescrypt.'
+                        "Argument Error: JSON passed to an MCF instance of Yescrypt."
                     )
                 except ValueError:
                     raise
                 except Exception:
                     raise ValueError(
-                        'Argument Error: Raw (probably) data passed to an MCF '
-                        'instance of Yescrypt.'
+                        "Argument Error: Raw (probably) data passed to an MCF "
+                        "instance of Yescrypt."
                     )
-            settings = hashed_password[:hashed_password.rfind(b'$')]
+            settings = hashed_password[: hashed_password.rfind(b"$")]
 
             # Length is always 32 in MCF mode.
             password_hash = self.digest(password, settings=settings, hash_length=32)
         else:
             if not salt:
-                raise ValueError('Argument Error: A salt is required in RAW mode.')
+                raise ValueError("Argument Error: A salt is required in RAW mode.")
             password_hash = self.digest(
                 password, salt=salt, hash_length=len(hashed_password)
             )
         if not secrets.compare_digest(password_hash, hashed_password):
-            raise WrongPassword('Error: Password does not match stored hash.')
+            raise WrongPassword("Error: Password does not match stored hash.")
 
     def __del__(self) -> None:
-        if hasattr(self, '_local_region'):
+        if hasattr(self, "_local_region"):
             _LIB.yescrypt_free_local(self._local_region)
 
 
@@ -370,7 +376,7 @@ def main() -> None:
     import time
 
     # All default settings.
-    hasher = Yescrypt(n=2**16, r=8, p=1, mode=Mode.JSON)
+    hasher = Yescrypt(n=2 ** 16, r=8, p=1, mode=Mode.JSON)
     for i in range(5):
         password = secrets.token_bytes(32)
         salt = secrets.token_bytes(32)
@@ -380,11 +386,11 @@ def main() -> None:
         try:
             hasher.compare(password, h)
         except WrongPasswordConfiguration:
-            print('passwords have different configurations')
+            print("passwords have different configurations")
         except WrongPassword:
-            print('passwords don\'t match')
-        print(f'yescrypt took {stop} seconds to generate main hash {h.decode()}')
+            print("passwords don't match")
+        print(f"yescrypt took {stop} seconds to generate main hash {h.decode()}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
