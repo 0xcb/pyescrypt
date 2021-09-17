@@ -268,15 +268,7 @@ class Yescrypt:
                     {
                         "alg": "yescrypt",
                         "ver": "1.1",
-                        "cfg": {
-                            "N": self._params.N,
-                            "NROM": self._params.NROM,
-                            "flags": self._params.flags,
-                            "g": self._params.g,
-                            "p": self._params.p,
-                            "r": self._params.r,
-                            "t": self._params.t,
-                        },
+                        "cfg": {k: getattr(self._params, k) for k in dir(self._params)},
                         "key": b64encode(digest).decode(),
                         "slt": b64encode(cast(bytes, salt)).decode(),
                     },
