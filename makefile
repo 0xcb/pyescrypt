@@ -77,8 +77,11 @@ dynamic: $(OBJS)
 
 # Note: DSKIP_MEMZERO isn't actually used (the code only has a SKIP_MEMZERO
 # guard), but we retain it in case it's used later.
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c | $(BUILD_DIR)
 	$(GCC) -Wall -O2 -fPIC -funroll-loops -fomit-frame-pointer -fopenmp -DSKIP_MEMZERO $(SIMD) -c $< -o $@
+
+$(BUILD_DIR):
+	mkdir $@
 
 yescrypt-opt.o: $(SRC_DIR)/yescrypt-platform.c
 

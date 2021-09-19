@@ -32,14 +32,30 @@ print(
 TODO: Explain.
 
 
-## Wheels
-Wheels are available for Windows, Linux, and macOS, all x86-64.
+## Installation
+```shell
+$ pip -m install pyescrypt
+Collecting pyescrypt
+  Downloading pyescrypt-0.1.0.tar.gz (73 kB)
+     |████████████████████████████████| 73 kB 1.9 MB/s 
+Requirement already satisfied: cffi>=1.0.0 in ./.local/lib/python3.8/site-packages (from pyescrypt) (1.14.6)
+Requirement already satisfied: pycparser in ./.local/lib/python3.8/site-packages (from cffi>=1.0.0->pyescrypt) (2.20)
+Building wheels for collected packages: pyescrypt
+  Building wheel for pyescrypt (setup.py) ... done
+  Created wheel for pyescrypt: filename=pyescrypt-0.1.0-py3-none-linux_x86_64.whl size=39771 sha256=db53f817c32b69f9c856eeb450cd1fb9a208e118d5ff467b0f740bc440def001
+  Stored in directory: /home/0xcb/.cache/pip/wheels/ee/e3/9e/6f47431888cf3f05b020d4b6e2d50d0eafb834b290fc84558a
+Successfully built pyescrypt
+Installing collected packages: pyescrypt
+Successfully installed pyescrypt-0.1.0
+```
+### Wheels
+Wheels are available for Windows and macOS (x86-64 only). Other platforms build from source with Make and GCC.
 
 Note: The macOS wheel is compiled without AVX support, since Big Sur's Python3 can't execute it. Given yescrypt is explicitly designed not to benefit from registers wider than 128 bits, AVX is no loss.
 
 (Presumably Big Sur's Python3 troubles with AVX are related to Rosetta. See the ["What Can't Be Translated"](https://developer.apple.com/documentation/apple-silicon/about-the-rosetta-translation-environment) section on the Rosetta page. The same binaries run without issue outside of Python.)
 
-## Building from Source
+### Building from Source
 Building pyescrypt from source requires GCC or a compatible compiler and (GNU) Make, regardless of platform. On Windows, the [Winlibs](https://github.com/brechtsanders/winlibs_mingw) distribution of MinGW is an excellent option. 
 
 A GCC-like compiler is necessary because yescrypt makes liberal use of GCC preprocessor and C extensions that Microsoft's compiler doesn't support (#warning, restrict, etc.). Clang works, but not everywhere. The version that ships with macOS Big Sur for example is missing OpenMP support.
@@ -63,7 +79,7 @@ Note that because pyescrypt links GOMP, GPL-licensed code is also included. Unle
 - `build`: build binaries and link them statically
 - `build_dynamic`: build binaries and link them dynamically
 - `bdist_wheel`: build binaries, link them statically, and package them in a wheel
-- `bdist_wheel_dynamic`: build binaries , link them dynamically, and package them in a wheel
+- `bdist_wheel_dynamic`: build binaries, link them dynamically, and package them in a wheel
 
 
 ## Useful Make Targets

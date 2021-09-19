@@ -1,0 +1,8 @@
+include makefile
+include src/yescrypt/*
+exclude src/yescrypt/.git
+include REQUIREMENTS
+include VERSION
+include LICENSE
+include README.md
+include requirements.txt

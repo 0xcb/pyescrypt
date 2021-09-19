@@ -4,9 +4,10 @@ import sys
 from distutils.command.build import build  # type: ignore
 
 from setuptools import find_packages, setup  # type: ignore
+from setuptools.command.install import install  # type: ignore
 from wheel.bdist_wheel import bdist_wheel as _bdist_wheel  # type: ignore
 
-_MAKE_TYPE = None
+_MAKE_TYPE = ""
 
 
 class BdistWheel(_bdist_wheel):
@@ -30,15 +31,26 @@ class BdistWheel(_bdist_wheel):
         return python, abi, plat
 
 
+def _build_source() -> None:
+    if subprocess.call(["make", "clean"]) != 0:
+        sys.exit(-1)
+    if subprocess.call(["make", _MAKE_TYPE]) != 0:
+        sys.exit(-1)
+
+
 class Build(build):
     """Clear any built binaries and rebuild with make."""
 
     def run(self):
-        if subprocess.call(["make", "clean"]) != 0:
-            sys.exit(-1)
-        if subprocess.call(["make", _MAKE_TYPE]) != 0:
-            sys.exit(-1)
+        _build_source()
         build.run(self)
+
+
+class BuildInstall(install):
+    """Build yescrypt when installing from source."""
+
+    def run(self):
+        super().run()
 
 
 if __name__ == "__main__":
@@ -46,7 +58,8 @@ if __name__ == "__main__":
         required = f.read().splitlines()
 
     with open("VERSION") as f:
-        version = f.read()
+        # Black automatically adds '\n'.
+        version = f.readline().strip()
 
     if sys.argv[1] in ("build_dynamic", "bdist_wheel_dynamic"):
         _MAKE_TYPE = "dynamic"
@@ -61,6 +74,7 @@ if __name__ == "__main__":
             "hashing."
         ),
         author="Colt Blackmore",
+        author_email="coltblackmore+pyescrypt@gmail.com",
         install_requires=required,
         license="MIT",
         url="https://https://github.com/0xcb/pyescrypt",
@@ -68,6 +82,7 @@ if __name__ == "__main__":
         package_dir={"": "src"},
         package_data={"": ["yescrypt.bin"]},
         cmdclass={
+            "install": BuildInstall,
             "build": Build,
             "build_dynamic": Build,
             "bdist_wheel": BdistWheel,
