@@ -42,7 +42,7 @@ class Build(build):
 
 
 if __name__ == "__main__":
-    with open("requirements.txt") as f:
+    with open("REQUIREMENTS") as f:
         required = f.read().splitlines()
 
     with open("VERSION") as f:
