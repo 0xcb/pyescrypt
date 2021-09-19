@@ -288,8 +288,7 @@ class Yescrypt:
 
         In Mode.JSON the encoded arguments are checked against this Yescrypt
         instance and a special exception is raised if they don't match. This
-        prevents `password` from being hashed and should not be used in a way
-        that's vulnerable to timing attacks.
+        shortcircuits hasing of `password` of entirely.
 
         In Mode.MCF, the internal yescrypt library decodes the arguments from the
         MCF string and the comparison simply fails if they don't match, since a
@@ -365,6 +364,7 @@ class Yescrypt:
 
 
 def main() -> None:
+    # Example usage.
     import time
 
     # All default settings.
