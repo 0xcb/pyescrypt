@@ -378,10 +378,13 @@ def main() -> None:
         try:
             hasher.compare(password, h)
         except WrongPasswordConfiguration:
-            print("passwords have different configurations")
+            print("Passwords have different configurations.")
         except WrongPassword:
-            print("passwords don't match")
-        print(f"yescrypt took {stop} seconds to generate main hash {h.decode()}")
+            print("Passwords don't match.")
+        print(
+            f"Yescrypt took {stop:.2f} seconds to generate main hash {h.decode()} and "
+            f"used {128 * 2**16 * 8 / 1024**2:.2f} MiB memory."
+        )
 
 
 if __name__ == "__main__":
