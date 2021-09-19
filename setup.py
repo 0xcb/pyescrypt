@@ -55,10 +55,10 @@ if __name__ == "__main__":
 
     setup(
         name="pyescrypt",
-        version="0.0.1",
+        version=version,
         description=(
             "Python bindings for yescrypt: memory-hard, NIST-compliant password "
-            "hashing"
+            "hashing."
         ),
         author="Colt Blackmore",
         install_requires=required,
