@@ -158,7 +158,9 @@ class Yescrypt:
         important as the amount of memory used grows (allocation is slow and
         dominates hashing time when using GiBs of memory).
 
-        Note that instances of Yescrypt aren't thread-safe.
+        Note that instances of Yescrypt aren't thread-safe externally. They're of
+        course thread-safe internally for their own `p` value, but you can't hash
+        with the same Yescrypt instance across multiple threads simultaneously.
 
         :param n: Block count (capital 'N' in yescrypt proper).
         :param r: Block size, in 128-byte units.
