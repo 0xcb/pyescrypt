@@ -76,7 +76,7 @@ if __name__ == "__main__":
         author="Colt Blackmore",
         author_email="coltblackmore+pyescrypt@gmail.com",
         install_requires=required,
-        license="MIT",
+        license="BSD",
         url="https://https://github.com/0xcb/pyescrypt",
         packages=find_packages("src"),
         package_dir={"": "src"},
